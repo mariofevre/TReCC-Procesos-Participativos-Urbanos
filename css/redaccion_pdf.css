@@ -1,0 +1,35 @@
+
+		#pageborde{
+			background-color:#fff;;
+			margin-top:0;
+			border:0px;
+		}
+		#page{
+			margin:0;
+			background-color:transparent;
+			width:754
+		}
+		#contenido{
+			margin:0;
+			border:0px;
+		}
+		body{
+			margin:0;	
+			background-image:none;		
+		}		
+		.ficha{
+			border:2px solid #000;
+		}
+		.caracter{
+			font-size:11px;
+		}
+		.espub > p{
+			font-size:11px;			
+		}
+		p{
+		 	font-size:13px;
+		 	text-align : justify;
+		 }
+		 .defecto{
+		 	color:#000;
+		 }
