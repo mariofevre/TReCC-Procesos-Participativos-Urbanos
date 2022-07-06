@@ -1,15 +1,14 @@
 <?php
 /**
+ * redaccion_ed_procesa_shp.php
  * 
- aplicación para guardar archivos cargados en el sevidor 
+ * analiza los archivos shp de proyecto en el servidor y genera los registros correspondientes en la base de datos, pudiendo tratarse de zonas, parcelas o jurisdiciones
  * 
-* @package    	geoGEC
-* @author     	GEC - Gestión de Espacios Costeros, Facultad de Arquitectura, Diseño y Urbanismo, Universidad de Buenos Aires.
-* @author     	<mario@trecc.com.ar>
-* @author    	http://www.municipioscosteros.org
-* @author		based on https://github.com/mariofevre/TReCC-Mapa-Visualizador-de-variables-Ambientales
-* @copyright	2018 Universidad de Buenos Aires
-* @copyright	esta aplicación se desarrolló sobre una publicación GNU 2017 TReCC SA
+*  @package    	TReCC(tm) Procesos Participativos Urbanos
+* @author     	TReCC SA
+* @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
+* @author    	www.trecc.com.ar  
+* @copyright	2013 2022 TReCC SA
 * @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
 * Este archivo es software libre: tu puedes redistriburlo 
 * y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
@@ -23,6 +22,7 @@
 * 
 * Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
 */
+
 
 ini_set('display_errors',true);
 include('./includes/header.php');
@@ -57,6 +57,28 @@ if(!isset($_POST['archivo'])){
 	$Log['tx'][]='error en la variable archivo';	
 	terminar($Log);
 }
+$Log['data']['archivo']=$_POST['archivo'];
+
+if(!isset($_POST['contenido'])){
+	$Log['res']='error';
+	$Log['tx'][]='error en la variable contenido';	
+	terminar($Log);
+}
+
+if($_POST['contenido']==''){
+	$Log['res']='error';
+	$Log['tx'][]='error en la variable contenido';	
+	terminar($Log);
+}
+
+if($_POST['avance']==''){
+	$Log['res']='error';
+	$Log['tx'][]='error en la variable avance';	
+	terminar($Log);
+}
+$CANTMAX=250; //maxima cantidad de inserts a generar por llamado php
+
+
 
 if(!isset($_POST['cotID']) || $_POST['cotID']<1){
 	$Log['res']='error';
@@ -68,10 +90,6 @@ $Hoy_a = date("Y");
 $Hoy_m = date("m");	
 $Hoy_d = date("d");
 $HOY = date("Y-m-d");
-
-
-
-
 
 
 
@@ -97,7 +115,7 @@ if(pg_errormessage($ConecSIG)!=''){
 }  
 
 while($fila =pg_fetch_assoc($Consulta)){
-	$Links[$fila['zz_cache_tipo']]=$fila['id'];
+	$Links[strtolower($fila['zz_cache_tipo'])]=$fila['id'];
 }
 
 
@@ -109,6 +127,7 @@ if(!file_exists($carpeta)){
 }
 
 $sc=scandir($carpeta);
+
 
 foreach($sc as $v){	
 	if($v=='.'){continue;}
@@ -188,47 +207,210 @@ foreach($Log['data']['shapes'] as $nombreSinExt => $dat){
 		terminar($Log);	
 	}
 	
+	$tot = $ShapeFile->getTotRecords();
+	$Log['data']['totalregistros']=$tot;
+	$carga=0;	
+	$paso=0;
+	$Log['data']['avance']=$_POST['avance'];
 	
-	$carga=0;
-	 while ($Geometry = $ShapeFile->fetchRecord()){
-
-		//$carga++;
-		//$_POST['avance']++;		
-		//$ShapeFile->setCurrentRecord($_POST['avance']);		
-		//$Geometry = $ShapeFile->fetchRecord();
-		$srid='5348';
+	while (
+		$carga<$CANTMAX
+		&&
+		$Log['data']['avance']<$tot
+	){
 		
-		$valor=$Geometry->getData($_POST['campolink']);
-		echo $valor;
+		$paso++;
+		$Log['data']['avance']++;
+		$ShapeFile->setCurrentRecord($Log['data']['avance']);
+		
+		$Geometry = $ShapeFile->fetchRecord();
+		
+		$srid='5348';//TODO inteligencia acá
 		
 		$wkt =$Geometry->getWKT();
-		echo $wkt;
+		//echo $wkt;
 		
 		$geomTX= "ST_GeomFromText('".$wkt."',".$srid.")";
 		$geomTX= "ST_Transform(".$geomTX.", 3857)";
 		
 		
-		if(isset($Links[$valor])){
-			$iddist=$Links[$valor];
-		}else{
-			$iddist='0';
-		}
 		
-		$query="
-			INSERT INTO 
-				trecc_zonificador.cot_zonas(
-					id_p_distritos, 
-					id_p_cot_proyectos, 
-					geom
-				)VALUES (
-					'".$iddist."', 
-					'".$_POST['cotID']."', 
-					".$geomTX."
+		if($_POST['contenido']=='zonas'){			
+			$valor=$Geometry->getData($_POST['campolink']);		
+			if(isset($Links[strtolower($valor)])){
+				$iddist=$Links[strtolower($valor)];
+			}else{
+				$iddist='0';
+			}
+			$query="
+				INSERT INTO 
+					trecc_zonificador.cot_zonas(
+						id_p_distritos, 
+						id_p_cot_proyectos, 
+						geom
+					)VALUES (
+						'".$iddist."', 
+						'".$_POST['cotID']."', 
+						".$geomTX."
+					)
+					RETURNING id
+			";
+			
+		}elseif($_POST['contenido']=='parcelas'){	
+			
+			$valor=$Geometry->getData($_POST['campolinkparcelas']);			
+			if(isset($Links[strtolower($valor)])){
+				$iddist=$Links[strtolower($valor)];
+			}else{
+				$iddist='0';
+			}
+			if(is_numeric($Geometry->getData($_POST['camposuperf']))){
+				$sup=$Geometry->getData($_POST['camposuperf']);
+			}else{
+				$sup=0;
+			}
+			if(!is_null($Geometry->getData($_POST['camponomencla']))){
+				$nom=$Geometry->getData($_POST['camponomencla']);
+			}else{
+				$nom='';
+			}
+			
+			
+			$query="			
+				SELECT EXISTS (
+					SELECT FROM 
+						pg_views
+					WHERE 
+						schemaname = 'trecc_zonificador' AND 
+						(
+							viewname  = 'cot_".$_POST['cotID']."_parcelas'
+							OR
+							viewname  = 'cot_".$_POST['cotID']."_parcelas_null'
+						)
 				)
-				RETURNING id
-		";
+			";				
+			$Consulta = pg_query($ConecSIG,utf8_encode($query));
+			if(pg_errormessage($ConecSIG)!=''){
+				$Log['res']='error';
+				$Log['tx'][]='error al detectar si preexisten vistas para geoserver de la capa de parcelas';
+				$Log['tx'][]=pg_errormessage($ConecSIG);
+				$Log['tx'][]=$query;
+				terminar($Log);
+			}
+			
+			$f=pg_fetch_assoc($Consulta);
+			$Log['tx'][]=print_r($f,true);
+			if($f['exists']=='f'){
+					
+				$query="			
+					CREATE OR REPLACE VIEW trecc_zonificador.cot_".$_POST['cotID']."_parcelas
+					 AS
+					 SELECT cot_parcelas.id,
+						cot_parcelas.id_p_distritos,
+						cot_parcelas.geom,
+						cot_parcelas.sup_const,
+						cot_distritos.zz_cache_tipo AS tipo,
+						cot_parcelas.nomencla,
+						cot_parcelas.zz_ref_tipotx
+					   FROM trecc_zonificador.cot_parcelas
+						 LEFT JOIN trecc_zonificador.cot_distritos ON cot_distritos.id = cot_parcelas.id_p_distritos
+					  WHERE cot_parcelas.id_p_cot_proyectos = ".$_POST['cotID']." AND cot_parcelas.zz_borrada=0
+
+				";				
+				$Consulta = pg_query($ConecSIG,utf8_encode($query));
+				if(pg_errormessage($ConecSIG)!=''){
+					$Log['res']='error';
+					$Log['tx'][]='error al insertar registro en la base de datos';
+					$Log['tx'][]=pg_errormessage($ConecSIG);
+					$Log['tx'][]=$query;
+					terminar($Log);
+				}			
+				
+				$query="	
+					CREATE OR REPLACE VIEW trecc_zonificador.cot_".$_POST['cotID']."_parcelas_null
+						 AS
+						 SELECT cot_parcelas.id,
+							cot_parcelas.id_p_distritos,
+							cot_parcelas.geom,
+							cot_parcelas.sup_const,
+							cot_distritos.zz_cache_tipo AS tipo,
+							cot_parcelas.nomencla,
+							cot_parcelas.zz_ref_tipotx
+						   FROM trecc_zonificador.cot_parcelas
+							 LEFT JOIN trecc_zonificador.cot_distritos ON cot_distritos.id = cot_parcelas.id_p_distritos
+						  WHERE cot_parcelas.id_p_cot_proyectos = ".$_POST['cotID']." AND cot_distritos.id IS NULL
+
+				";				
+				$Consulta = pg_query($ConecSIG,utf8_encode($query));
+				if(pg_errormessage($ConecSIG)!=''){
+					$Log['res']='error';
+					$Log['tx'][]='error al insertar registro en la base de datos';
+					$Log['tx'][]=pg_errormessage($ConecSIG);
+					$Log['tx'][]=$query;
+					terminar($Log);
+				}	
+				
+				//TODO generar capas en geoserver	
+			}else{
+				$Log['tx'][]='al parecer ya existe la vista en la base de datos';
+				$Log['tx'][]=utf8_encode(print_r($f,true));
+			}
+				
+				
+			
+			
+			$query="
+				INSERT INTO 
+					trecc_zonificador.cot_parcelas(
+						id_p_distritos, 
+						id_p_cot_proyectos, 
+						sup_const,
+						nomencla,
+						zz_ref_tipotx,
+						geom
+					)VALUES (
+						'".$iddist."', 
+						'".$_POST['cotID']."', 
+						'".$sup."',
+						'".$nom."',
+						'".$valor."',
+						".$geomTX."
+					)
+					RETURNING id
+			";
+			
+						
+		}elseif($_POST['contenido']=='jurisdiccion'){
+	
+			$query="
+				INSERT INTO 
+					trecc_zonificador.cot_jurisdicciones(
+						zz_auto_cot_proyectos, 
+						geom
+					)VALUES (
+						'".$_POST['cotID']."', 
+						".$geomTX."
+					)
+					RETURNING id
+			";
+			
+		}elseif($_POST['contenido']=='calles'){		
+		
+			$query="
+				INSERT INTO 
+					trecc_zonificador.cot_calles(
+						id_p_cot_proyectos, 
+						nombre,
+						geom
+					)VALUES (
+						'".$_POST['cotID']."', 
+						'".$_POST['tipo']."', 
+						".$geomTX."
+					)
+					RETURNING id
+			";							
+		}
 		$Consulta = pg_query($ConecSIG,utf8_encode($query));
-		//$Log['tx'][]=$query;
 		if(pg_errormessage($ConecSIG)!=''){
 			$Log['res']='error';
 			$Log['tx'][]='error al insertar registro en la base de datos';
@@ -238,19 +420,28 @@ foreach($Log['data']['shapes'] as $nombreSinExt => $dat){
 		}	
 		$f=pg_fetch_assoc($Consulta);
 		$Log['data']['inserts'][]=$f['id'];
-
-		$tot = $ShapeFile->getTotRecords();
-		$Log['data']['avanceP']=round((100/$tot)*$_POST['avance']);
-
-		if($_POST['avance']==$tot){		
+		$carga++;
+		
+		if($carga==$CANTMAX){						
+			$_POST['avance'];
+			$tot = $ShapeFile->getTotRecords();			
+			$Log['data']['avanceP']=round((100/$tot)*($Log['data']['avance']),2);			
+			$Log['res']='exito';
+			terminar($Log);
+		}	
+		
+		if($Log['data']['avance']==$tot){		
+			//TODO limpiar cache de parcelas en geoserver
+			
+			ini_set('display_errors',true);
+			
+			include('./admin_publicar_wms.php');
 			$Log['tx'][]="se alcanzo la cantidad total de ".$ShapeFile->getTotRecords()." registros";
 			$Log['data']['avance']='final';
 			$Log['res']='exito';
 			terminar($Log);
-		}
-	
+		}	
 	}
-
 	$Log['data']['avance']=$_POST['avance'];	
 	$Log['res']='exito';	
 	terminar($Log);

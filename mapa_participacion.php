@@ -1,8 +1,8 @@
 <?php
 /**
- * mapa_zonificacion.php
+ * mapa_participacion.php
  * 
- * espacio html para explorar un mapa interactivo conteniondo información de zonificiación.
+ * espacio html para explorar un mapa interactivo con funciones para registrar opiniones georeferenciadas.
  * 
 *  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
@@ -22,8 +22,6 @@
 * 
 * Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
 */
-
-
 
 ini_set('display_errors',true);
 include('./includes/header.php');
@@ -97,6 +95,99 @@ include('./includes/header.php');
 		#fichaDistrito table td{
 			font-size:13px;
 		}
+		
+		
+		.switch {
+		  position: relative;
+		  display: inline-block;
+		  width: 40px;
+		  height: 24px;
+		}
+
+		.switch input { 
+		  opacity: 0;
+		  width: 0;
+		  height: 0;
+		}
+
+		.slider {
+		  position: absolute;
+		  cursor: pointer;
+		  top: 0;
+		  left: 0;
+		  right: 0;
+		  bottom: 0;
+		  background-color: #ccc;
+		  -webkit-transition: .4s;
+		  transition: .4s;
+		}
+
+		.slider:before {
+		  position: absolute;
+		  content: "";
+		  height: 16px;
+		  width: 16px;
+		  left: 4px;
+		  bottom: 4px;
+		  background-color: white;
+		  -webkit-transition: .4s;
+		  transition: .4s;
+		}
+
+		input:checked + .slider {
+		  background-color: #2196F3;
+		}
+
+		input:focus + .slider {
+		  box-shadow: 0 0 1px #2196F3;
+		}
+
+		input:checked + .slider:before {
+		  -webkit-transform: translateX(16px);
+		  -ms-transform: translateX(16px);
+		  transform: translateX(16px);
+		}
+
+		/* Rounded sliders */
+		.slider.round {
+		  border-radius: 24px;
+		}
+
+		.slider.round:before {
+		  border-radius: 50%;
+		}
+		
+		label > span {
+			width: auto;
+		}
+		
+		#formpropuesta[estado="activo"] {
+			display: block;
+		}
+		#formpropuesta {
+			display: none;
+			position: fixed;
+			left: 2vw;
+			bottom: 2vh;
+			height: 400px;
+			width: 400px;
+			background-color: #fff;
+			border: 1px solid #08afd9;
+			box-shadow: 10px 10px 5px rgba(0,0,0,0.8);
+			z-index: 100;
+			overflow:auto;
+		}
+		
+		#formpropuesta input{
+				width:calc(100% - 8px);
+		}
+		#formpropuesta textarea{
+				width:calc(100% - 8px);
+				height:170px;
+		}
+		#formpropuesta label{
+				width:auto;
+		}
 		.multiply{
 		   mix-blend-mode: multiply;
 		}
@@ -107,20 +198,34 @@ include('./includes/header.php');
 		.ol-overlaycontainer-stopevent{
 			display:none;
 		}
+
 	</style>
 </head>
 
 <body>	
 		
 	<div id="pageborde">
-	<div id="page">		
-		<div id="menu">	
+	<div id="page">			
+		<div  id='menu'>
 			<h1 id='titulopagina'></h1>
 			<p id='dataproyecto'></p>
 		</div>
 		<div  id='contenido' class='contenido'>
+			<h1 id='titulopagina'></h1>
+			<p id='dataproyecto'></p>
+			<p>Te proponemos que uses este mapa interactivo para explorar el estado actual de la propuesta de zonificación y compuartas tu opinión sobre las zonas que te interesen.</p>
+
+
+			<p>
+			<span>Explorar</span>			
+			<label class="switch">
+			  <input id='activadibujo' type="checkbox" onchange='toogleEdit(this)' autocomplete="off">
+			  <span class="slider round"></span>
+			</label>
+			<span>Cargar propuesta</span>
+			</p>
+			
 			<div id='portamapagrande' class='portamapagrande' estado='inactivo'>
-				<a onclick='cerrarMapaGrande()'><img src='./img/fullscreen.jpg'></a>
 			</div>
 		
 		</div>	
@@ -135,8 +240,7 @@ include('./includes/header.php');
 			<a onclick='guardarDistrito()'>guardar</a>
 			<a class='eliminar' onclick='eliminarDistrito()'>eliminar</a>
 		</div>
-		
-				
+						
 		<input type='hidden' name='iddist'>
 				
 		<label for='nombre'>Nombre</label><br>
@@ -166,9 +270,10 @@ include('./includes/header.php');
 		<label for='orden'>Orden de aparición</label><input name='orden'>
 		
 		<label for='co_color'>Color</label><br>
-		<input type='color' name='co_color'><br>
-		
+		<input type='color' name='co_color'><br>		
 	</div>
+	
+	
 	
 	<div id='formgrupo' class='formulario'>
 	
@@ -191,14 +296,51 @@ include('./includes/header.php');
 		
 	</div>
 	
+	
+	
 	<div id='fichaDistrito' estado='inactivo' class='formulario'>
 		<div id='botonera'><a onclick='cerrarForm(this.parentNode.parentNode.getAttribute("id"));mapaResaltarDitrito(-1)'>cerrar</a></div>
 		<h1 id='tipo'></h1>
 		<table></table>
-	
 	</div>
 
-<table id='fichaparcela' estado='inactivo'>
+
+	<div id='ListaParcelasIndefinidas'>
+		<div id='listadosinpartic'></div>
+		<div id='listadosconpartic'></div>
+	</div>
+	
+
+	<div id='formpropuesta' class='formulario'>
+	
+		<div id='botonera'>
+			<a onclick='cerrarForm(this.parentNode.parentNode.getAttribute("id"))'>cerrar</a>
+			<a onclick='guardarPropuesta()'>guardar</a>
+		</div>
+		
+		<input type='hidden' name='id_p_cot_parcelas'>
+		<input type='hidden' name='idpropuesta'>
+		<input type='hidden' name='geometría'>
+		<p>¿Cual es tu opinión para esta zona?</p>
+		<label for='nombre'>Resumen (o título)</label><br>
+		<input name='nombre' autocomplete="off"><br>
+		
+		<label for='descripcion'>Desarrollo de la idea</label><br>
+		<textarea name='descripcion' autocomplete="off"></textarea>
+
+		<label for='nombre'>Tu nombre y apellido (opcional)</label><br>
+		<input name='autor' autocomplete="off"><br>
+		
+		<label for='nombre'>¿Representás a alguna organización? ¿A cual? (opcional)</label><br>
+		<input name='organizacion' autocomplete="off"><br>
+				
+		<label for='nombre'>Mail de contacto (opcional)</label><br>
+		<input name='mail' autocomplete="off"><br>
+		
+	</div>		
+	
+	
+<table id='fichaparcela' estado='inactivo' idparcela=''>
 	<tr>
 		<td rowspan="3" id="codigo" style="background-color: rgb(64, 173, 50);">D-Ex</td>
 		<td>
@@ -220,7 +362,7 @@ include('./includes/header.php');
 	<tr>
 		<td>
 			<div id="cuadrito">
-				<span class="titulito">Antes</span><span id="contenido">ZEU R3 Zona de Ensanche Urbano Residencial 3</span>
+				<span class="titulito">Antes</span><span id="contenido"></span>
 			</div>
 		</td>
 	</tr>
@@ -235,6 +377,7 @@ include('./includes/header.php');
 		<td id="columna2">
 			<div id='botonera'>
 			<a onclick='cerarFormParcela();'>Cerrar</a>
+			<a onclick='comentarParcela()'>Comentar</a>
 			</div>
 			<div id="nomencla"></div>
 			<div id="superficie"></div>
@@ -258,15 +401,16 @@ include('./includes/header.php');
 		</td>
 	</tr>
 </table>
-<?php 
-//include('./includes/pie.php');
-?>
+	
+	
+<?php include('./includes/pie.php');?>
 
 <script type="text/javascript" src="./js/jquery/jquery-3.6.0.js"></script>
 <script type="text/javascript" src="./js/openlayers_6_12_0/build/ol.js"></script>
 
-<script type="text/javascript" src="./mapa_zonificacion_js_consultas.js"></script>
-<script type="text/javascript" src="./mapa_zonificacion_js_interaccion.js"></script>
+<script type="text/javascript" src="./mapa_participacion_js_consultas.js"></script>
+<script type="text/javascript" src="./mapa_zonificacion_js_muestra.js"></script>
+<script type="text/javascript" src="./mapa_participacion_js_interaccion.js"></script>
 
 <script type="text/javascript">
 
@@ -274,10 +418,8 @@ function PreprocesarRespuesta(_response){_res=$.parseJSON(_response);return _res
 
 var _HabilitadoEdicion='si';
 
-var _COTID='24';
-var _COTCOD='LHuKeej';
-
-
+var _COTID='15';
+var _COTCOD='hUeDTp8';
 var _get_id='<?php echo $_GET["id"];?>';
 var _get_cod='<?php echo $_GET["cod"];?>';
 if(_get_id!=''){_COTID=_get_id;}
@@ -285,19 +427,27 @@ if(_get_cod!=''){_COTCOD=_get_cod;}
 
 var _DataDistritos={};
 
+var _DataParcelasIndefinidas={};
+
 var _Opciones={
 	'cot_grupos':{}
-}
+	}
+	
+var _nPar=0; //numero de participación 
 
 
-	
-	
 var _nFile=0;
 var xhr={};
 
 var _Maps={};
 
+var _Modo='consulta';
+
 consultarContenidosBase();
+consultarParcelasIndefinidas();
+consultarParticipaciones('actual');
+
+let _draw; // global so we can remove it later
 
 </script>
 

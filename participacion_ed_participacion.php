@@ -1,8 +1,8 @@
 <?php 
 /**
- * redaccion_ed_grupo.php
+ * participacion_ed_participacion.php
  * 
- * actualiza la base de datos actualizando los datos de un grupo de distrito distrito (tipo de zona)
+ * actualiza la base insertando una nueva opinión georeferenciada
  * 
 *  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
@@ -28,7 +28,6 @@
 
 ini_set('display_errors',true);
 include('./includes/header.php');
-ini_set('display_errors',true);
 
 $Log=array();
 global $Log;
@@ -50,51 +49,74 @@ function terminar($Log){
 
 $oblig=array(
     "cotID" => "mayor,0",
-    "idgrupo" => "mayor,0",
-    "nombre"  => "set",
-    "descripcion"  => "set",
-    "co_color"  => "set"
+    "geotx" => "set",
+    "nombre" => "set",
+    "descripcion" => "set",
+    "autor" => "set",
+    "organizacion" => "set",
+    "mail" => "set",
+    "nPar" => "set"
 );
-
 foreach($oblig as $k => $v){
-	
 	if(!isset($_POST[$k])){
-		
 		$Log['res']='error';
-		$Log['mg'][]='Error falta varaible '.$k;
+		$Log['mg']='Error falta varaible '.$k;
 		terminar($Log);
 	}	
 }
 
-
-$Log['data']['idgrupo']=$_POST['idgrupo'];
-
-
-if(!ctype_xdigit(substr($_POST['co_color'],1))){
-	$_POST['co_color']='#ffffff';
+if(!isset($_POST['cotID'])){
+	$Log['res']='error';
+	$Log['mg']='Error falta varaible idcot';
+	terminar($Log);
 }
 
-// consulta todos los distritos generados	
-$query="
-	UPDATE
-		trecc_zonificador.cot_grupos	
-	SET
-		nombre='".$_POST['nombre']."',
-		descripcion='".$_POST['descripcion']."',
-		co_color='".$_POST['co_color']."'
-	WHERE 
-		cot_grupos.zz_auto_cot_proyectos='".$_POST['cotID']."'
-	AND
-	id='".$_POST['idgrupo']."'
-";	
+$Log['data']['nPar']=$fila['nPar'];
 
+
+
+
+$query="	
+	INSERT INTO trecc_zonificador.cot_participaciones
+		(	
+			titulo, 
+			desarrollo, 
+			autor, 
+			organizacion, 
+			contacto, 
+			ip, 			
+			ip2, 		
+			fechaunix,
+			geom,
+			zz_auto_cot_proyectos,
+			id_p_cot_parcelas
+		
+		)
+	VALUES (
+			'".$_POST['nombre']."', 
+			'".$_POST['descripcion']."', 
+			'".$_POST['autor']."', 
+			'".$_POST['organizacion']."',  
+			'".$_POST['mail']."', 			 
+			'".$_SERVER['HTTP_X_FORWARDED_FOR']."', 
+			'".$_SERVER['REMOTE_ADDR']."', 	
+			'".time()."',		
+			ST_GeomFromText('".$_POST['geotx']."'),
+			'".$_POST['cotID']."',
+			'".$_POST['id_p_cot_parcelas']."'					
+		)
+	RETURNING id
+";
+	
 $Consulta = pg_query($ConecSIG, $query);
 if(pg_errormessage($ConecSIG)!=''){
 	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
 	$Log['tx'][]='query: '.$query;
 	$Log['res']='err';
 	terminar($Log);
-}
+}  
+$fila=pg_fetch_assoc($Consulta);
+$Log['data']['nid']=$fila['id'];
 
 
 $Log['res']='exito';

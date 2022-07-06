@@ -1,7 +1,7 @@
 /**
- * mapa_zonificacion_js_interaccion.js
+ * mapa_revisa_participacion_interaccion.js
  * 
- * funciones interactivas de generación y adaptación de formularios y fichas para el mapa interactivo de visualización de la zonificación
+ * funciones interactivas de generación y adaptación de formularios y fichas para el seguimiento de opiniones georeferenciadas.
  * 
 *  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
@@ -72,6 +72,17 @@ var labelStyle = new ol.style.Style({
 });
 
 
+
+function cerrarForm(_idform){
+	document.querySelector('#'+_idform).setAttribute('estado','inactivo');
+}
+	
+
+
+
+
+
+	
 function mapaGrande(){
 	
 	document.querySelector('head title').innerHTML=_DataDistritos.proyecto.nombre
@@ -91,9 +102,52 @@ function mapaGrande(){
 	_dmap.setAttribute('class','mapagrande');
 	_porta.appendChild(_dmap);
 	
+	
 	_source = new ol.source.Vector({});
+	_sourcePropuestas =new ol.source.Vector({});
+	_sourcePropuestas.on('change', function(event) {
+		cambioSourcePropuestas();
+	});
+	_sourceGuardadas=new ol.source.Vector({});
+	
+	_MapaEstado='observa';
 	_sourcegrupo = new ol.source.Vector({});
-
+	
+	
+	_estiloGuardada = new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: [0,0, 0, 0.6],
+					width: 2,
+					lineDash: [4,8],
+					lineDashOffset: 6
+				  }),
+				  fill: new ol.style.Fill({
+					color: 'rgba(0,0,0,0.3)'
+					}),
+				});
+				
+	_estiloGuardadaSelecta = new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: 'rgba(8,175,217,1)',
+					width: 2,
+					lineDash: [4,8],
+					lineDashOffset: 6
+				  }),
+				  fill: new ol.style.Fill({
+					color: 'rgba(8,175,217,0.5)'
+					}),
+				});
+	
+	
+	_estiloFiltrada = new ol.style.Style({
+				  stroke: new ol.style.Stroke({
+					color: 'rgba(0,0,0,0)',
+					width: 0
+				  }),
+				  fill: new ol.style.Fill({
+					color: 'rgba(0,0,0,0)'
+					}),
+				});
 	
 	
 	_Mapagrande= new ol.Map({
@@ -108,7 +162,6 @@ function mapaGrande(){
 			}),
 			new ol.layer.Tile({
 				minZoom: 15,
-				name:'parcelas',
 				className: '',
 				source: new ol.source.TileWMS({
 					url:'http://190.111.246.33:8080/geoserver/zonificador_quilmes/wms',
@@ -129,7 +182,7 @@ function mapaGrande(){
 						labelStyle.getText().setText('');
 					}
 					labelStyle.getFill().setColor("rgba(0,0,0,0)");								
-					labelStyle.getStroke().setColor("rgba(0,0,0,0)");
+					labelStyle.getStroke().setColor("rgba(0,0,0,1)");
 				  					
 					return labelStyle;
 				},
@@ -147,19 +200,35 @@ function mapaGrande(){
 					}else{
 						labelStyle.getText().setText('');
 					}
-					labelStyle.getFill().setColor(feature.get('color'));
-					
-				   //console.log(feature.get('estado'));
-					//if(feature.get('estado')==='0'){
-					//	labelStyle.getFill().setColor("rgba(255,0,0,0.5)");
-					//}else if(feature.get('estado')==='1'){
-					//	labelStyle.getFill().setColor("rgba(0,255,100,0.8)");
-					//}else{
-					//	labelStyle.getFill().setColor('rgba(256,256,256,1)');
-					//}
+					labelStyle.getFill().setColor(feature.get('color'));								
+					labelStyle.getStroke().setColor("rgba(255,255,255,1)");
 					
 					return labelStyle;
 				},
+				declutter: true  
+			}),
+			new ol.layer.Vector({
+				name:'layerpropuestas',
+				source: _sourcePropuestas,
+				style: function(feature) {
+				  
+					if(feature.get('name')!=null){
+						labelStyle.getText().setText(feature.get('name'));						
+					}else{
+						labelStyle.getText().setText('');
+					}
+					labelStyle.getFill().setColor("rgba(8,175,217,0.5)");					
+					labelStyle.getStroke().setColor("rgba(8,175,217,1)");
+					
+					
+					return labelStyle;
+				},
+				declutter: true  
+			}),
+			new ol.layer.Vector({
+				name:'layerGuardadas',
+				source: _sourceGuardadas,
+				style: _estiloGuardada,
 				declutter: true  
 			})
 		],
@@ -168,9 +237,8 @@ function mapaGrande(){
 			zoom: 0
 		})
 	});
-	_Mapagrande.on('click', function(evt){
-		
-		consultaPunto(evt.pixel,evt);       
+	_Mapagrande.on('click', function(evt){		
+		consultaParticipacionesPunto(evt.pixel,evt);       
 	});
 		
 
@@ -202,7 +270,7 @@ function mapaGrande(){
 		
 		var _sy = new ol.style.Style({
 			stroke: new ol.style.Stroke({color : 'rgba('+_frgb['r']+','+_frgb['g']+','+_frgb['b']+',1)', width : 3}),
-			fill: new ol.style.Fill({color : 'rgba('+_frgb['r']+','+_frgb['g']+','+_frgb['b']+',0.5)'})
+			fill: new ol.style.Fill({color : 'rgba('+_frgb['r']+','+_frgb['g']+','+_frgb['b']+',1)'})
 		});
 		
 		
@@ -233,37 +301,83 @@ function mapaGrande(){
 
 }
 
-
-function consultaPunto(pixel,_ev){
+function consultaParticipacionesTexto(_idpart){
+	limpiarSeleccionParticipaciones();
+	document.querySelector('#listaparticipaciones [idpart="'+_idpart+'"]').setAttribute('selecto','si');
 	
-	_zoom=_Mapagrande.getView().getZoom();
-	//console.log(_zoom);
-	//console.log(_ev.coordinate);
-	if(_zoom>=15){
-		consultarPuntoParcela(_ev.coordinate);		
+	_editor=document.querySelector('#editorrespuesta');
+	_editor.setAttribute('cargado','si');
+	_editor.querySelector('[name="id"]').value=_idpart;
+	_editor.querySelector('[name="respuesta_resultado"]').value=_DataParticipaciones.participaciones[_idpart].respuesta_resultado;
+	_editor.querySelector('[name="respuesta_por"]').value=_DataParticipaciones.participaciones[_idpart].respuesta_resultado;
+	_editor.querySelector('[name="respuesta_observaciones"]').value=_DataParticipaciones.participaciones[_idpart].respuesta_observaciones;
+	
+	
+	_features = _sourceGuardadas.getFeatures();
+	
+	for(_nn in _features){  
+		_feature=	_features[_nn];
+		_prop=_feature.getProperties();
+		if(_prop.idpart==_idpart){
+			_feature.setStyle(_estiloGuardadaSelecta);	
+			//_Mapagrande.getView().fit(_feature.getGeometry().getExtent(), {padding:'40',duration:'2',size:_Mapagrande.getSize()});	
+			_Mapagrande.getView().fit(_feature.getGeometry().getExtent(),{duration:'500',padding:[100, 100, 100, 100]});	
+		}
 	}
+	filtrar();		
+}
+	
+	
+
+function limpiarSeleccionParticipaciones(){
+	_features = _sourceGuardadas.getFeatures();
+	
+	for(_nn in _features){  	
+		_features[_nn].setStyle(null);
+	}		
+	
+	_as=document.querySelectorAll('#listaparticipaciones > a');
+	
+	for(_an in _as){
+		if(typeof _as[_an] != 'object'){continue;}
+		_as[_an].setAttribute('selecto','no');
+	}
+	
+	filtrar();		
+}
+
+function consultaParticipacionesPunto(pixel,_ev){
 	
 	//if(_Dibujando=='si'){return;}
 	
-	var _feature = _Mapagrande.forEachFeatureAtPixel(pixel, function(_feature, _layer){
-	   if(_layer.get('name')=='layerzonas'){
-		  return _feature;
-	   }
-	  
-	});  
+	limpiarSeleccionParticipaciones();
 	
+	var _feature = _Mapagrande.forEachFeatureAtPixel(pixel, function(_feature, _layer){
+	   if(_layer.get('name')=='layerGuardadas'){  
+		_feature.setStyle(_estiloGuardadaSelecta);
+		_prop=_feature.getProperties();
+		document.querySelector('#listaparticipaciones [idpart="'+_prop.idpart+'"]').setAttribute('selecto','si');
+		document.querySelector('#listaparticipaciones [idpart="'+_prop.idpart+'"]').scrollIntoView();
+		_Mapagrande.getView().fit(_feature.getGeometry().getExtent(), _Mapagrande.getSize());	
+		
+	   }
+	});  
+		  
+	  
 	if(_feature==undefined){
 		
-		if(parent._Aactiva=='si'){
-			
+		if(parent._Aactiva=='si'){	
 		}
-		return;		
+		return;	
 	}
-
-	//console.log(_feature.getProperties());
-	formularDitrito(_feature.getProperties().iddis);
-	mapaResaltarDitrito(_feature.getProperties().iddis);
-
+	
+	/*
+	_Pid=_feature.getProperties().idai;
+	consultaPuntoAj(_Pid);
+	*/
+	
+	//formularDitrito(_feature.getProperties().iddis);
+	//mapaResaltarDitrito(_feature.getProperties().iddis);
 }
 
 function cerrarForm(_idform){	
@@ -311,10 +425,13 @@ function mapaResaltarDitrito(_iddis){
 		}
 		//_features[_nn].setStyle(_sty);
 		
+		
 		if(_features[_nn].getProperties().sel=='si'){
 			//console.log('ab');
 			_features[_nn].setStyle(null);
+			
 			_features[_nn].getProperties().sel='no'
+			
 			//console.log(_features[_nn].getProperties());
 			//console.log('a[idgeo="'+_features[_nn].getProperties().idai+'"]');
 			document.querySelector('a[idgeo="'+_features[_nn].getProperties().idai+'"]').setAttribute('stat','');
@@ -399,33 +516,25 @@ function formularDitrito(_iddis){
 	}				
 }
 
-function cerarFormParcela(){
-	_form=document.querySelector('#fichaparcela');
-	_form.setAttribute('estado','inactivo');
+/*
+function mapaGrandeDist(_iddis){
+	console.log(_iddis);							
+	_porta=document.querySelector('#portamapagrande');
+	_porta.setAttribute('estado','activo');
+	_mg=_porta.querySelector('#portamapagrande #mapagrande');
+	if(_mg!=null){_mg.parentNode.removeChild(_mg);}
 	
-}
+	_dmap=document.createElement('div');
+	_dmap.setAttribute('id','mapagrande');
+	_dmap.setAttribute('name','mapagrande');
+	_dmap.setAttribute('class','mapagrande');
+	_porta.appendChild(_dmap);
+	
+	_datd=_DataDistritos.distritos[_iddis];
+	
+	_datg=_DataDistritos.grupos[_datd.id_p_cot_grupos_id];	
 
-function  formularParcela(_datap){
-	
-	_form=document.querySelector('#fichaparcela');
-	_form.setAttribute('estado','activo');
-	
-	_form.querySelector('#nombre').innerHTML=_datap.parcela.nomencla;
-	
-	_form.querySelector('#sup_pc').innerHTML=Math.round(Number(_datap.parcela.sup_pol))+'m²';
-	_form.querySelector('#sup_cons').innerHTML=Math.round(Number(_datap.parcela.sup_const))+'m²';
-
-	
-	_col=_form.querySelector('#columna1');
-	_col.innerHTML='';
-	_contenido_columna_izq=JSON.parse(_DataDistritos.proyecto.ficha_pc_col_izq);
-	
-	_datd= _DataDistritos.distritos[_datap.parcela.id_p_distritos];
-	
-	
-	
-	
-	if(_datap.parcela.id_p_distritos==0){
+	if(_iddis==0){
 		//esta zona no pertenece a nuingún grupo
 		_frgb={
 			'r':150,
@@ -433,7 +542,7 @@ function  formularParcela(_datap){
 			'b':150		
 		};
 	}else{
-		_grgb = hexToRgb(_datd.grupo_co_color);
+		_grgb = hexToRgb(_datg.co_color);
 		_drgb = hexToRgb(_datd.co_color);
 		_frgb={
 			'r':(Math.round((_grgb['r']+_drgb['r'])/2)),
@@ -441,150 +550,115 @@ function  formularParcela(_datap){
 			'b':(Math.round((_grgb['b']+_drgb['b'])/2))		
 		};
 	}
-	_colo=rgbToHex(_frgb['r'], _frgb['g'], _frgb['b']);	
-	
-	_colo_rgb=_frgb['r']+', '+_frgb['g']+', '+_frgb['b'];
-	
-	_form.querySelector('#codigo').innerHTML=_datd.zz_cache_tipo;
-	_form.querySelector('#codigo').style.backgroundColor=_colo;
-	_form.querySelector('#contiene_cod_grupo').innerHTML=_datd.grupo;
-	_form.querySelector('#contiene_cod_grupo').style.backgroundColor=_datd.grupo_co_color;
-	
-	
-	_form.querySelector('#contiene_cod_clase').innerHTML=_datd.nom_clase;
-	_form.querySelector('#contiene_cod_clase').style.backgroundColor=_datd.co_color;
-	
-	_form.querySelector('#tipo').innerHTML=_datd.descripciongrupo+' <br>'+_datd.des_clase;	
-	_form.querySelector('#tipo').style.backgroundColor=_colo;	
-	
-	_fotmax=0;
-	
-	console.log(_DataDistritos.proyecto.ficha_pc_col_izq);
-	console.log(_contenido_columna_izq);
-	for(_nc in _contenido_columna_izq){
+	_col=rgbToHex(_frgb['r'], _frgb['g'], _frgb['b']);	
 		
-		_comp=_contenido_columna_izq[_nc];
-		console.log(_comp);
-		
-		_div=document.createElement('div');
-		_col.appendChild(_div);
-		
-		if(_comp.tipo=='titulo'){
-		
-			_div.setAttribute('class','titulo');
-			_div.innerHTML=_comp.texto;	
-				
-		}else if(_comp.tipo=='seccion'){
-			
-			_div.setAttribute('class',_comp['class']);
-			
-			_sp=document.createElement('span');
-			_sp.setAttribute('class','titulito');
-			_sp.innerHTML=_DataDistritos.secciones[_comp.id].nombre;
-			_div.appendChild(_sp);
 	
-			if(
-				_DataDistritos.secciones[_comp.id].nombre.includes('FOT')
-				||
-				_DataDistritos.secciones[_comp.id].nombre.includes('F.O.T.')
-			){
-				if(_datd.secciones[_comp.id]!=undefined){
-					_fotmax=Math.max(_fotmax,Number(_datd.secciones[_comp.id].texto.replace(',','.')));
-				}
-			}
-			
-			_sp=document.createElement('span');
-			_div.appendChild(_sp);
-			if(_datd.secciones[_comp.id]!=undefined){
-				_sp.innerHTML=_datd.secciones[_comp.id].texto;
-			}
-		}
+	
+	var _sy = new ol.style.Style({
+		stroke: new ol.style.Stroke({color : 'rgba('+_frgb['r']+','+_frgb['g']+','+_frgb['b']+',1)', width : 3}),
+		fill: new ol.style.Fill({color : 'rgba('+_frgb['r']+','+_frgb['g']+','+_frgb['b']+',0.5)'})
+	});
+	
+	
+	var _sg = new ol.style.Style({
+		stroke: new ol.style.Stroke({color : 'rgba(256,256,256,1)', width : 1}),
+		fill: new ol.style.Fill({color : 'rgba(150,150,150,0.5)'})
+	});	
+	_source = new ol.source.Vector({});	
+	_sourcegrupo = new ol.source.Vector({});
+	
+	
+	_Mapagrande= new ol.Map({
+		  target: 'mapagrande',
+		  layers: [
+			new ol.layer.Tile({
+			  source: new ol.source.Stamen({layer: 'toner'})
+			}),
+			new ol.layer.Vector({
+			  source: _sourcegrupo,
+			  style: function(feature) {
+					if(feature.get('name')!=null){
+						labelStyle.getText().setText(feature.get('name'));						
+					}else{
+						labelStyle.getText().setText('');
+					}
+				   //console.log(feature.get('estado'));
+					//if(feature.get('estado')==='0'){
+					//	labelStyle.getFill().setColor("rgba(255,0,0,0.5)");
+					//}else if(feature.get('estado')==='1'){
+					//	labelStyle.getFill().setColor("rgba(0,255,100,0.8)");
+					//}else{
+					//	labelStyle.getFill().setColor('rgba(256,256,256,1)');
+					//}
+				   
+					return labelStyle;
+				},
+				declutter: true  
+			}),
+			new ol.layer.Vector({
+			  source: _source,
+			  style: _sy
+			})
+		  ],
+		  view: new ol.View({
+			center: [0, 0],
+			zoom: 0
+		  })
+		});
+		
+	console.log(_datd.zonas);
+	for(_nz in _datd.zonas){
+		
+		_datz=_datd.zonas[_nz];
+					
+		var format = new ol.format.WKT();
+		var _feat = format.readFeature(_datz.geotx, {
+			dataProjection: 'EPSG:3857',
+			featureProjection: 'EPSG:3857'
+		});
+		
+		_feat.setProperties({
+			'idai':_datz.id,
+			'nombre':_datd.grupo+'-'+_datd.nom_clase
+		});
+		_feat.set('name',_datd.grupo+'-'+_datd.nom_clase);
+		_source.addFeature(_feat);
+
 	}
 	
-	_maxedif = _fotmax * Number(_datap.parcela.sup_pol);
 	
-	_form.querySelector('#sup_max').innerHTML=Math.round(_maxedif)+'m²';
-	_form.querySelector('#por_const').innerHTML=Math.round(Number(_datap.parcela.sup_const)*100/_maxedif)+'%';
+	for(_nd in _DataDistritos.distritosOrden){
+		_idd2=_DataDistritos.distritosOrden[_nd];
+		_datd2=_DataDistritos.distritos[_idd2];
+		_datg=_DataDistritos.grupos[_datd2.id_p_cot_grupos_id];
+		for(_nz in _datd2.zonas){
+			
+			_datz2=_datd2.zonas[_nz];
+							
+			var format = new ol.format.WKT();
+			var _feat = format.readFeature(_datz2.geotx, {
+				dataProjection: 'EPSG:3857',
+				featureProjection: 'EPSG:3857'
+			});
+			_feat.setProperties({
+				'idai':_datz2.id,
+				'nombre':''
+			});
+			_feat.set('name',_datd2.grupo+'-'+_datd2.nom_clase);
+			_sourcegrupo.addFeature(_feat);
+			
+		}
+	}	
 	
-	_form.querySelector('#mapaA').innerHTML='';
-	_sourceA = new ol.source.Vector({});
-	
-	_MapaA= new ol.Map({
-		
-		target: 'mapaA',
-		layers: [
-			new ol.layer.Tile({
-				className: 'desaturada',
-				source: new ol.source.XYZ({
-					url:'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG:3857@png/{z}/{x}/{-y}.png'
-				})
-			}),
-			new ol.layer.Vector({
-				name:'layerlimitezonas',
-				className: 'multiply',
-				source: _sourceA,
-				style: 	new ol.style.Style({
-						stroke: new ol.style.Stroke({color : 'rgba(0,0,0,1)', width : 3}),
-						fill: new ol.style.Fill({color : 'rgba('+_colo_rgb+',1)'})
-				})			
-			})
-		],
-		view: new ol.View({
-			center: [0, 0],
-			maxZoom: 18
-		})
-	});
-	
-	var format = new ol.format.WKT();
-	var _feat = format.readFeature(_datap.parcela.geotx, {
-		dataProjection: 'EPSG:3857',
-		featureProjection: 'EPSG:3857'
-	});
+	_Mapagrande.getView().fit(_source.getExtent(), _Mapagrande.getSize());	
 
-	_sourceA.addFeature(_feat);
-	
-	_MapaA.getView().fit(_sourceA.getExtent(), _MapaA.getSize());
-	
-	_form.querySelector('#mapaB').innerHTML='';
-	_sourceB = new ol.source.Vector({});
-	
-	_MapaB= new ol.Map({
-		
-		target: 'mapaB',
-		layers: [
-			new ol.layer.Tile({
-				className: 'normal',
-				source: new ol.source.BingMaps({
-					key: 'CygH7Xqd2Fb2cPwxzhLe~qz3D2bzJlCViv4DxHJd7Iw~Am0HV9t9vbSPjMRR6ywsDPaGshDwwUSCno3tVELuob__1mx49l2QJRPbUBPfS8qN',
-					imagerySet:  'Aerial'
-				})
-			}),
-			new ol.layer.Vector({
-				name:'layerlimitezonas',
-				className: 'normal',
-				source: _sourceB,
-				style: 	new ol.style.Style({
-						stroke: new ol.style.Stroke({color : 'rgba(250,250,250,1)', width : 1}),
-						fill: new ol.style.Fill({color : 'rgba('+_colo_rgb+',0.6)'})
-				})			
-			})
-		],
-		view: new ol.View({
-			center: [0, 0],
-			maxZoom: 17
-		})
-	});
-	
-	var format = new ol.format.WKT();
-	var _feat = format.readFeature(_datap.parcela.geotx, {
-		dataProjection: 'EPSG:3857',
-		featureProjection: 'EPSG:3857'
-	});
-
-	_sourceB.addFeature(_feat);
-	
-	_MapaB.getView().fit(_sourceB.getExtent(), _MapaB.getSize());
-
-	
 }
 
+function cerrarMapaGrande(){
+	_porta=document.querySelector('#portamapagrande');
+	_porta.setAttribute('estado','inactivo');
+	_mg=_porta.querySelector('#mapagrande');
+	_mg.parentNode.removeChild(_mg);
+}
+
+*/

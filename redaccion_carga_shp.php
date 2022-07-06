@@ -1,15 +1,14 @@
 <?php
 /**
+ * redaccion_carga_shp.php
  * 
- aplicación para guardar archivos cargados en el sevidor 
+ * guarda archivos componentes de un shapefile para su posterior procesamiento recibe shapefiles de parcelas, zonas y jurisdicciones
  * 
-* @package    	geoGEC
-* @author     	GEC - Gestión de Espacios Costeros, Facultad de Arquitectura, Diseño y Urbanismo, Universidad de Buenos Aires.
-* @author     	<mario@trecc.com.ar>
-* @author    	http://www.municipioscosteros.org
-* @author		based on https://github.com/mariofevre/TReCC-Mapa-Visualizador-de-variables-Ambientales
-* @copyright	2018 Universidad de Buenos Aires
-* @copyright	esta aplicación se desarrolló sobre una publicación GNU 2017 TReCC SA
+*  @package    	TReCC(tm) Procesos Participativos Urbanos
+* @author     	TReCC SA
+* @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
+* @author    	www.trecc.com.ar  
+* @copyright	2013 2022 TReCC SA
 * @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
 * Este archivo es software libre: tu puedes redistriburlo 
 * y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
@@ -23,6 +22,7 @@
 * 
 * Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
 */
+
 
 ini_set('display_errors',true);
 include('./includes/header.php');

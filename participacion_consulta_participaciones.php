@@ -1,8 +1,9 @@
 <?php 
 /**
- * redaccion_ed_redaccion_texto_parrafo.php
+ * participacion_consulta_participaciones.php
  * 
- * actualiza la base actualizando el texto de un párrafo o contenido de seccion de un distrito (tipo de zona)
+ * consulta a base de datos de opiniones cargadas y su estado de seguimiento
+ * output: json
  * 
 *  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
@@ -48,10 +49,7 @@ function terminar($Log){
 
 
 $oblig=array(
-    "cotID" => "mayor,0",
-    "iddist" => "mayor,0",
-    "idsecc"   => "mayor,0",
-    "texto"  => "set"
+    "cotID" => "mayor,0"
 );
 foreach($oblig as $k => $v){
 	if(!isset($_POST[$k])){
@@ -66,21 +64,69 @@ if(!isset($_POST['cotID'])){
 	$Log['mg']='Error falta varaible idcot';
 	terminar($Log);
 }
-$Log['data']['id_p_cot_secciones_id']=$_POST['idsecc'];
-$Log['data']['id_p_cot_distritos_id']=$_POST['iddist'];
 
-// consulta todas las las secciones de redaccion y su contenido para cada distrito
+$Log['data']['nPar']=$fila['nPar'];
+
+
+if(isset($_POST['modo'])){
+	if($_POST['modo']=='actual'){
+		$whereactual=" AND ( zz_copia_de_id is null OR respuesta_resultado is null OR respuesta_resultado = 'pendiente')";
+	}
+	
+}
+
+
 $query="	
-	SELECT
-		count(*) as cant
-	FROM
-		trecc_zonificador.cot_parrafos
-	WHERE
-		cot_parrafos.zz_auto_cot_proyectos = '".$_POST['cotID']."'
-		AND
-		id_p_cot_secciones_id= '".$_POST['idsecc']."'
-		AND
-		id_p_cot_distritos_id = '".$_POST['iddist']."'
+	SELECT 
+			id,
+			titulo, 
+			desarrollo, 
+			autor, 
+			organizacion, 
+			contacto, 
+			ip, 			
+			ip2, 		
+			fechaunix,
+			respuesta_resultado,
+			respuesta_por,
+			respuesta_observaciones,			
+			ST_AsTExt(geom) as geotx
+		FROM
+			trecc_zonificador.cot_participaciones
+		
+		WHERE
+			zz_auto_cot_proyectos='".$_POST['cotID']."'		
+			$whereactual
+		ORDER by fechaunix desc
+";
+	
+$Consulta = pg_query($ConecSIG, $query);
+if(pg_errormessage($ConecSIG)!=''){
+	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
+	$Log['tx'][]='query: '.utf8_encode($query);
+	$Log['res']='err';
+	terminar($Log);
+}  
+$Log['tx'][]='query: '.utf8_encode($query);
+while($fila =pg_fetch_assoc($Consulta)){		
+	$Log['data']['participacionesOrden'][]=$fila['id'];
+	$Log['data']['participaciones'][$fila['id']]=$fila;
+}
+
+
+
+
+$query="	
+	SELECT 
+			respuesta_resultado,
+			count(id) as cant
+			
+		FROM
+			trecc_zonificador.cot_participaciones
+		WHERE
+			zz_auto_cot_proyectos='".$_POST['cotID']."'		
+		
+		GROUP BY respuesta_resultado;
 ";
 	
 $Consulta = pg_query($ConecSIG, $query);
@@ -90,67 +136,16 @@ if(pg_errormessage($ConecSIG)!=''){
 	$Log['res']='err';
 	terminar($Log);
 }  
-$fila=pg_fetch_assoc($Consulta);
-if($fila['cant']==0){
-
-	$query="	
-		INSERT INTO
-			trecc_zonificador.cot_parrafos
-			(
-				zz_auto_cot_proyectos,
-				id_p_cot_secciones_id,
-				id_p_cot_distritos_id
-			
-			)VALUES(
-			
-				'".$_POST['cotID']."',
-				'".$_POST['idsecc']."',
-				'".$_POST['iddist']."'
-			
-			)
+$Log['data']['estadisticas'];
+while($fila =pg_fetch_assoc($Consulta)){	
 	
-	";
-		
-	$Consulta = pg_query($ConecSIG, $query);
-	if(pg_errormessage($ConecSIG)!=''){
-		$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
-		$Log['tx'][]='query: '.$query;
-		$Log['res']='err';
-		terminar($Log);
-	}  
-
+	$res=$fila['respuesta_resultado'];
+	if($res==''){$res='null';}
+	$Log['data']['estadisticas'][$res]=$fila['cant'];
 }
 
 
 
-
-
-$query="	
-	UPDATE
-		trecc_zonificador.cot_parrafos
-		
-	SET
-		texto='".$_POST['texto']."'
-	
-	WHERE
-		cot_parrafos.zz_auto_cot_proyectos = '".$_POST['cotID']."'
-		AND
-		id_p_cot_secciones_id= '".$_POST['idsecc']."'
-		AND
-		id_p_cot_distritos_id = '".$_POST['iddist']."'
-";
-	
-$Consulta = pg_query($ConecSIG, $query);
-if(pg_errormessage($ConecSIG)!=''){
-	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
-	$Log['tx'][]='query: '.$query;
-	$Log['res']='err';
-	terminar($Log);
-}  
-$fila=pg_fetch_assoc($Consulta);
-foreach($filas as $k => $V){
-	$Log['data'][$k]=$v;
-}
 
 $Log['res']='exito';
 terminar($Log);

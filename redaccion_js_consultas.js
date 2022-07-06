@@ -1,7 +1,34 @@
+/**
+ * redaccion_js_consultas.js
+ * 
+ * funciones de consulta ajax para interactuar con la base de datos desde la redaccion general del proyecto
+ * 
+*  @package    	TReCC(tm) Procesos Participativos Urbanos
+* @author     	TReCC SA
+* @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
+* @author    	www.trecc.com.ar  
+* @copyright	2013 2022 TReCC SA
+* @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
+* Este archivo es software libre: tu puedes redistriburlo 
+* y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
+* publicada por la Free Software Foundation, version 3
+* 
+* Este archivo es distribuido por si mismo y dentro de sus proyectos 
+* con el objetivo de ser útil, eficiente, predecible y transparente
+* pero SIN NIGUNA GARANTÍA; sin siquiera la garantía implícita de
+* CAPACIDAD DE MERCANTILIZACIÓN o utilidad para un propósito particular.
+* Consulte la "GNU General Public License" para más detalles.
+* 
+* Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
+*/
+
+
+
 function consultarContenidosBase(){
 	
 	
 	_parametros = {
+		'cotCOD': _COTCOD,		
 		'cotID': _COTID
 	};
 	$.ajax({
@@ -18,9 +45,103 @@ function consultarContenidosBase(){
 			//if(_res===false){return;}
 			//_DatosGrupos=_res.data;
 			//consultarEstructura();
-			mostrarContenidosBase();
+			//mostrarContenidosBase();
+			mostrarContenidosBase_Fichas();
 			mostrarIndiceGrupos();
 			mostrarIndiceDistritos();
+		}
+	})
+	delete _parametros;	
+}
+
+
+function descargarZonas(){
+	
+	alert('Función en desarrollo');
+}
+	
+function eliminarParcelas(){
+	if(!confirm('¿Eliminamos todas las geometrías de parcelas este proyecto? Vas a tener que volver a subir un archivo shapefile. \n Las definiciones y las geomnetrías de zona no se eliminarán.')){return;}
+	
+	_parametros = {
+		'cotCOD': _COTCOD,		
+		'cotID': _COTID
+	};
+	$.ajax({
+		url:   './admin_elimina_parcelas.php',
+		type:  'post',
+		data: _parametros,
+		error: function(XMLHttpRequest, textStatus, errorThrown){ 
+			alert("Estado: " + textStatus); alert("Error: " + errorThrown); 
+		},
+		success:  function (response){	
+			_res = PreprocesarRespuesta(response);
+			
+			if(_res.res!='exito'){alert('falló la accion solicitada');}
+			
+			consultarContenidosBase();
+		}
+	})
+	delete _parametros;	
+}
+		
+function eliminarZonas(){
+	if(!confirm('¿Eliminamos todas las geometrías de zonas de este proyecto? Vas a tener que volver a subir un archivo shapefile. \nLas definiciones de grupos y clase para los tipos de zona no se eliminarán.')){return;}
+	
+	_parametros = {
+		'cotCOD': _COTCOD,		
+		'cotID': _COTID
+	};
+	$.ajax({
+		url:   './admin_elimina_zonas.php',
+		type:  'post',
+		data: _parametros,
+		error: function(XMLHttpRequest, textStatus, errorThrown){ 
+			alert("Estado: " + textStatus); alert("Error: " + errorThrown); 
+		},
+		success:  function (response){	
+			_res = PreprocesarRespuesta(response);
+			
+			if(_res.res!='exito'){alert('falló la accion solicitada');}
+			
+			consultarContenidosBase();
+		}
+	})
+	delete _parametros;	
+}
+
+
+			
+			
+
+function duplicarProyecto(){
+	if(!confirm('¿Generamos una nueva versión de este proyecto, dejando este espacio obsoleto?')){return;}
+	
+	_parametros = {
+		'cotID': _COTID,
+		'cotCOD': _COTCOD		
+	};
+	$.ajax({
+		url:   './admin_duplica_proyecto.php',
+		type:  'post',
+		data: _parametros,
+		error: function(XMLHttpRequest, textStatus, errorThrown){ 
+			alert("Estado: " + textStatus); alert("Error: " + errorThrown); 
+		},
+		success:  function (response){	
+			_res = PreprocesarRespuesta(response);
+			
+			if(_res.res!='exito'){alert('falló la accion solicitada');}
+			
+			_str='Se ha generado un nuevo poryeco con estas referencias que deberá copiar';
+			_str+='<br> id: '+_res.data.nid;
+			_str+='<br> codigo: '+_res.data.ncod
+			_str+='<br> link: http://190.111.246.33/extranet/zonificador/redaccion.php?id='+_res.data.nid+'&cod='+_res.data.ncod;
+			
+			alert(_p);
+			_p=document.createElement('p');
+			_p.innerHTML=_str;
+			document.querySelector('#contenido').insertBefore(_p,document.querySelector('#contenido').firstChild);
 		}
 	})
 	delete _parametros;	
@@ -31,6 +152,7 @@ function consultarRedaccion(_iddist,_idsecc){
 	
 	_parametros = {
 		'cotID': _COTID,
+		'cotCOD': _COTCOD,		
 		'iddist': _iddist,
 		'idsecc': _idsecc
 	};
@@ -58,6 +180,7 @@ function guardarRedaccion(){
 	
 	_parametros = {
 		'cotID': _COTID,
+		'cotCOD': _COTCOD,		
 		'iddist': document.querySelector('#formredaccion [name="iddist"]').value,
 		'idsecc': document.querySelector('#formredaccion [name="idsecc"]').value,
 		'texto': document.querySelector('#formredaccion [name="texto"]').value
@@ -114,7 +237,8 @@ function crearDistrito(){
 
 	
 	_parametros = {
-		'cotID': _COTID
+		'cotID': _COTID,
+		'cotCOD': _COTCOD		
 	};
 	$.ajax({
 		url:   './redaccion_ed_distrito_crear.php',
@@ -140,8 +264,15 @@ function guardarDistrito(){
 
 	document.querySelector('#formdistrito').setAttribute('estado','inactivo');
 	
+	if(document.querySelector('#formdistrito [name="color_final_definido"]').checked==true){
+		_co_final=document.querySelector('#formdistrito [name="color_final"]').value;
+	}else{
+		_co_final='';
+	}
+	
 	_parametros = {
 		'cotID': _COTID,		
+		'cotCOD': _COTCOD,		
 		"iddist":document.querySelector('#formdistrito [name="iddist"]').value,
 		"id_p_cot_grupos":document.querySelector('#formdistrito [name="id_p_cot_grupos_id"]').value,
 		"cot_grupos_nombre-n":document.querySelector('#formdistrito [name="cot_grupos_nombre-n"]').value,
@@ -149,7 +280,8 @@ function guardarDistrito(){
 		"nom_clase":document.querySelector('#formdistrito [name="nom_clase"]').value,
 		"des_clase":document.querySelector('#formdistrito [name="des_clase"]').value,
 		"orden":document.querySelector('#formdistrito [name="orden"]').value,
-		"co_color":document.querySelector('#formdistrito [name="co_color"]').value			
+		"co_color":document.querySelector('#formdistrito [name="co_color"]').value,
+		"co_color_final":_co_final
 	};
 	$.ajax({
 		url:   './redaccion_ed_distrito.php',
@@ -216,6 +348,7 @@ function  eliminarGrupo(){
 	
 	_parametros = {
 		'cotID': _COTID,
+		'cotCOD': _COTCOD,		
 		'idgrupo': _idgrupo	
 	};
 	$.ajax({
@@ -255,6 +388,7 @@ function eliminarDistrito(){
 	
 	_parametros = {
 		'cotID': _COTID,
+		'cotCOD': _COTCOD,		
 		'iddist': _iddist	
 	};
 	$.ajax({
@@ -282,10 +416,13 @@ function eliminarDistrito(){
 
 
 
+
+			
 function consultarCargaShape(){
 	document.querySelector('#formshapefile #candidatos').innerHTML='';
 	_parametros = {
 		'cotID': _COTID,
+		'cotCOD': _COTCOD,		
 		'tipo': 'zonas'
 	};
 	$.ajax({
@@ -302,58 +439,13 @@ function consultarCargaShape(){
 			
 			for(_shapef in _res.data.shapes){
 				
+				
 				_dat=_res.data.shapes[_shapef];
 				
-				_div=document.createElement('div');
-				_div.setAttribute('class','candidato');
-				_div.setAttribute('shapefile',_shapef);
-				document.querySelector('#formshapefile #candidatos').appendChild(_div);
 				
-				_h=document.createElement('h2');
-				_h.innerHTML=_shapef;
-				_div.appendChild(_h);
-				
-				_a=document.createElement('a');
-				_a.innerHTML='Borrar archivos';
-				_a.setAttribute('class','eliminar');
-				_a.setAttribute('onclick','borrarArchivos("'+_shapef+'")');
-				_div.appendChild(_a);				
-				
-				_p=document.createElement('p');
-				_p.innerHTML=_dat.estado;
-				_p.setAttribute('estado',_dat.estado);
-				_div.appendChild(_p);
-				
-				_p=document.createElement('p');
-				_p.innerHTML='registros:'+_dat.cant;
-				_p.innerHTML+='<br>tipo:'+_dat.tipo;
-				_div.appendChild(_p);
+				generarCandidato(_shapef,_dat);
 				
 				
-				if(_dat.campos!=undefined){
-									
-					_sel=document.createElement('select');
-					_sel.setAttribute('name','campolink');
-					_div.appendChild(_sel);
-					
-					
-					for(_campo in _dat.campos){
-						_op=document.createElement('option');
-						_op.setAttribute('value',_campo);
-						_op.innerHTML=_campo;
-						_sel.appendChild(_op);
-					}
-				
-					if(_dat.estado=='viable'){
-						_in=document.createElement('input');
-						_in.setAttribute('value','cargar');
-						_in.setAttribute('type','button');
-						_in.setAttribute('onclick','procesarShapefile("'+_shapef+'",0)');
-						_in.setAttribute('estado',_dat.estado);
-						_div.appendChild(_in);
-											
-					}
-				}	
 			}
 			
 			delete _res;		
@@ -390,16 +482,55 @@ function borrarArchivos(_archivo){
 }
 
 
-
-function procesarShapefile(_archivo,_avance){
-	if(!confirm('¿procesamos este shapefile '+_archivo+'.shp?... Segure?')){return;}
-		
+function regenerarSLD(){
+document.querySelector('#formshapefile #candidatos').innerHTML='';
 	_parametros = {
 		'cotID': _COTID,
-		'archivo': _archivo,
+		'cotCOD': _COTCOD
+	};	
+	
+	$.ajax({
+		url:   './admin_generar_sld.php',
+		type:  'post',
+		data: _parametros,
+		error: function(XMLHttpRequest, textStatus, errorThrown){ 
+			alert("Estado: " + textStatus); alert("Error: " + errorThrown); 
+		},
+		success:  function (response){	
+			_res = PreprocesarRespuesta(response);
+			
+			if(_res.res!='exito'){alert('error');return;}
+			
+			
+		}
+	})
+	
+}
+			
+			
+			
+			
+function procesarShapefile(_archivo,_avance,_safemode){
+	if(_safemode!='no'){
+		if(!confirm('¿procesamos este shapefile '+_archivo+'.shp?... Segure?')){return;}
+	}
+	
+	_parametros = {
+		'cotID': _COTID,
+		'cotCOD': _COTCOD,	
+		'archivo':_archivo,	
 		'campolink':document.querySelector('#formshapefile .candidato[shapefile="'+_archivo+'"] [name="campolink"]').value,
+		'campolinkparcelas':document.querySelector('#formshapefile .candidato[shapefile="'+_archivo+'"] .modoparcelas [name="campolink"]').value,
+		'camponomencla':document.querySelector('#formshapefile .candidato[shapefile="'+_archivo+'"] .modoparcelas [name="camponomencla"]').value,
+		'camposuperf':document.querySelector('#formshapefile .candidato[shapefile="'+_archivo+'"] .modoparcelas [name="camposuperf"]').value,
+		'contenido':document.querySelector('#formshapefile [name="contenido"]:checked').value,
 		'avance':_avance
 	};
+	
+	if(_avance==0){
+		_avance=document.querySelector('#formshapefile .candidato[shapefile="'+_archivo+'"] #avance');
+		_avance.innerHTML='<img src="./img/cargando.gif">0%';
+	}
 	$.ajax({
 		url:   './redaccion_ed_procesa_shp.php',
 		type:  'post',
@@ -410,7 +541,19 @@ function procesarShapefile(_archivo,_avance){
 		success:  function (response){	
 			_res = PreprocesarRespuesta(response);
 			
-			consultarCargaShape();
+			
+			
+			if(_res.res!='exito'){alert('error');return;}
+			
+			_avance=document.querySelector('#formshapefile .candidato[shapefile="'+_res.data.archivo+'"] #avance');
+			_avance.innerHTML='<img src="./img/cargando.gif">'+_res.data.avanceP+'%';			
+			
+			if(_res.data.avance!='final'){
+				procesarShapefile(_res.data.archivo,_res.data.avance,'no');
+				return;
+			}
+			
+			consultarContenidosBase();
 		}
 	})
 }
@@ -539,10 +682,8 @@ function subirDocumento(_filedata,_nfile){
 				_file.setAttribute('estado','terminado');
 				_file.setAttribute('idfi',_res.data.nid);
 				
-				_DataConservas[_res.data.conserva.id]=_res.data.conserva;
-				//crearFila(_res.data.conserva,'');
-				consultarPlanes();
-									
+				consultarCargaShape();
+				 				
 			} else {
 				_file=document.querySelector('#listadosubiendo .archivo[nf="'+_res.data.nfile+'"]');
 				_file.innerHTML+=' ERROR';

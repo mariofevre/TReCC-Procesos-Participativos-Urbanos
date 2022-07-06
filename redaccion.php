@@ -22,8 +22,58 @@ include('./includes/header.php');
 	
 	<style type='text/css' id='modoedicion'>
 		
+		#listadosubiendo .archivo[estado="terminado"] img{
+			display:none;
+			
+		}
+		
+		#listadosubiendo .archivo[estado="terminado"]{
+		  background-color: rgb(50,150,50);
+		  color: #000;
+		  font-size: 10px;
+		}
 		
 		
+		#indicegrupos a{
+				color:#000;
+				cursor:pointer;
+		}
+		#indicegrupos a:hover{
+			color:#08afd9;
+		}
+		#indicedistritos a{
+				color:#000;
+		}
+		#indicedistritos a:hover{
+			color:#08afd9;
+		}
+		
+		
+		#formdistrito #paleta label{
+				width:50px;
+		}
+		.distrito{
+			page-break-after: always;
+			page-break-inside: avoid;
+		}
+		.distrito{
+			border:3px solid #000;
+		}
+		.ol-overlaycontainer-stopevent{
+			display:none;
+			}
+		@media print{
+			body{
+				background-image:unset;
+			}
+			#page{
+					border:none;
+			}
+			#pageborde{
+					border:none;
+					background-color:transparent;
+			}	
+		}
 	</style>
 </head>
 
@@ -46,21 +96,29 @@ include('./includes/header.php');
 		<div id="pageborde">
 	<div id="page">
 		<div id="menu">
-			<h1>Zonas</h1>
+			<h1 id='titulopagina'></h1>
+			<p id='dataproyecto'></p>
 			<p>En esta página usted puede acceder a la información técnica de cada zona.</p>
 			<p>Los usuarios haibilitados pueden editar el contenido.</p>
 		
-			<a target='blank' href='./mapa_zonificacion.php'>ver mapa</a>
-			<a onclick="alert('funcion en desarrollo')">ver en modo texto</a>
+			<a target='blank' onclick='window.open("./mapa_zonificacion.php?id="+_COTID+"&cod="+_COTCOD , "_blank")'>abrir mapa de consulta</a>
+			<a target='blank' onclick='window.open("./mapa_participacion.php?id="+_COTID+"&cod="+_COTCOD , "_blank")'>abrir mapa participativo</a>
+			<a target='blank' onclick='window.open("./mapa_revisa_participacion.php?id="+_COTID+"&cod="+_COTCOD , "_blank")'>abrir mapa de revisión de participaciones</a>
+			<a target='blank' onclick='window.open("./listado_parcelas.php?id="+_COTID+"&cod="+_COTCOD , "_blank")'>abrir listado de parcelas</a>
+			<br>
+			<a onclick='mostrarContenidosBase_Texto()'>ver en modo texto</a>
 			<a onclick='mostrarContenidosBase()'>ver en modo edición</a>
-			<a onclick="alert('funcion en desarrollo')">ver en modo fichas</a>
+			<a onclick='mostrarContenidosBase_Fichas()'>ver en modo fichas</a>
 			<a onclick='mostrarContenidosBase_Tabla()'>ver en modo tabla</a>
 			<a onclick='mostrarNombres_Tabla()'>ver en modo tabla de nombres</a>
-
-			
+			<br>
 			<input onclick='crearDistrito()' type='submit' value='agregar un nuevo tipo'>
-			<input onclick='activaFormShape()' type='submit' value='genera zonas desde shp'>
-			
+			<input onclick='activaFormShape()' type='submit' value='genera geometrías desde shp'>
+			<input onclick='regenerarSLD()' type='submit' value='regenerar color parcelas sld'>			
+			<input onclick='duplicarProyecto()' type='submit' value='duplicar proyecto'>			
+			<input onclick='eliminarZonas()' type='submit' value='eliminar geometrías de zonas'>
+			<input onclick='eliminarParcelas()' type='submit' value='eliminar geometrías de parcelas'>			
+			<input onclick='descargarZonas()' type='submit' value='descargar shapefile'>
 			
 		</div>
 		
@@ -79,12 +137,14 @@ include('./includes/header.php');
 			<a onclick='cerrarForm(this.parentNode.parentNode.getAttribute("id"))'>cerrar</a>
 		</div>
 		
-		<h1>Subir geopmetrías desde archivos shapefile</h1>
-		<input type='radio' name='contenido' checked>zonas<br>
-		<input type='radio' name='contenido' disabled>jurisdicción (en desarrollo)<br>
+		<h1>Subir geometrías desde archivos shapefile</h1>
+		<input type='radio' name='contenido' onchange='modoCandidato();' value='zonas' checked>zonas<br>
+		<input type='radio' name='contenido' onchange='modoCandidato();' value='jurisdiccion' >jurisdicción (en desarrollo)<br>
+		<input type='radio' name='contenido' onchange='modoCandidato();' value='parcelas' >parcelas (en desarrollo)<br>
+		<input type='radio' name='contenido' onchange='modoCandidato();' value='calles' >calles (en desarrollo)<br>
 		<br>
-		<input type='radio' name='modo' checked>incorporar a zonas definidas<br>
-		<input type='radio' name='modo' disabled>reemplazar zonas definidas<br>
+		<input type='radio' name='modo' value='agrega' checked>incorporar a la geometría previa<br>
+		<input type='radio' name='modo' value='reemplaza' disabled>reemplazar la geometría previa<br>
 		<div id='candidatos'></div>
 		<div id='listadosubido'></div>
 		<div id='listadosubiendo'></div>
@@ -95,9 +155,6 @@ include('./includes/header.php');
 					ondragover='drag_over(event,this)' 
 					ondragleave='drag_out(event,this)'
 			> - arrastre archivos aquí - </span>
-		<!--	
-			<input id='uploadinput' class='uploadinput' type='file' name='archivo_FI_documento' value='' onchange='subirDocumentoMPP(this);'></label>			
-		-->
 		</div>
 		
 		<div id='contenidos'></div>
@@ -105,13 +162,10 @@ include('./includes/header.php');
 		<div id='estado'>
 			<pre>
 				<code>
-
 				</code>
 			</pre>
 		</div>
-		
 	</div>
-
 
 
 	<div id='formredaccion' class='formulario'>
@@ -139,7 +193,6 @@ include('./includes/header.php');
 			<a class='eliminar' onclick='eliminarDistrito()'>eliminar</a>
 		</div>
 		
-				
 		<input type='hidden' name='iddist'>
 				
 		<label for='nombre'>Nombre</label><br>
@@ -168,9 +221,26 @@ include('./includes/header.php');
 		</div>		
 		<label for='orden'>Orden de aparición</label><input name='orden'>
 		
+		
+		<table id='paleta'> 
+			<td>
+		<label for='colorgrupo'>Color del grupo</label><br>
+		<input disabled type='color' name='colorgrupo'><br>
+		</td>
+		<td>
 		<label for='co_color'>Color</label><br>
 		<input type='color' name='co_color'><br>
-		
+		</td>
+		<td>
+		<label for='color_mezcla'>Mezcla automática</label><br>
+		<input disabled type='color' name='color_mezcla'><br>
+		</td>
+		<td>
+		<label for='color_final'>Color final</label><br>
+		<input  type='color' name='color_final'><br>
+		usar:<input  type='checkbox' name='color_final_definido'>(desmarcado usa mezcla en los mapas)<br>
+		</td>
+		</table>
 	</div>
 	
 	<div id='formgrupo' class='formulario'>
@@ -209,11 +279,35 @@ include('./includes/header.php');
 
 <script type="text/javascript">
 
-function PreprocesarRespuesta(_response){_res=$.parseJSON(_response);return _res;}
+function PreprocesarRespuesta(_response){
+	_res=$.parseJSON(_response);
+	for(_nm in _res.mg){alert(_res.mg[_nm]);}
+	return _res;	
+}
 
 var _HabilitadoEdicion='si';
+/*
+var _COTID='15';
+var _COTCOD='hUeDTp8';
+var _COTID='22';
+var _COTCOD='v8wevKw';
+var _COTID='23';
+var _COTCOD='yLSkHqT';
+var _COTID='24';
+var _COTCOD='LHuKeej';
+var _COTID='25';
+var _COTCOD='k56G7hI';
+var _COTID='26';
+var _COTCOD='aR5PFmF';
+*/
+var _COTID='27';
+var _COTCOD='kIz23JT';
 
-var _COTID='1';
+var _get_id='<?php echo $_GET["id"];?>';
+var _get_cod='<?php echo $_GET["cod"];?>';
+if(_get_id!=''){_COTID=_get_id;}
+if(_get_cod!=''){_COTCOD=_get_cod;}
+
 var _DataDistritos={};
 
 var _Opciones={
