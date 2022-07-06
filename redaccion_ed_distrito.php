@@ -1,23 +1,18 @@
 <?php 
 /**
-* redacciones_consulta.php
-*
-* redacciones_consulta.php se incorpora en la carpeta raiz como una función complementaria básica 
-* para aquellas aplicaciones que consultan el listado de redacciones realizdas
-* contiene dos funciones: una función que realiza una búsqueda en la base de datos y evalua los resultados devolviendo un array.
-* otra función: con el array resultante de la función anterior genera un listado de los resultados en código HTML.
-* 
-* @package    	TReCC(tm) paneldecontrol.
-* @subpackage 	documentos
+ * participacion_ed_distrito.php
+ * 
+ * actualiza la base actualizando las caracteísticas de un distrito y sus secciones de redaccion
+ * 
+*  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
 * @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
 * @author    	www.trecc.com.ar  
-* @copyright	2013 2014 TReCC SA
-* @license    	https://www.gnu.org/licenses/agpl-3.0-standalone.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (agpl-3.0)
-* Este archivo es parte de TReCC(tm) paneldecontrol y de sus proyectos hermanos: baseobra(tm), TReCC(tm) intraTReCC  y TReCC(tm) Procesos Participativos Urbanos.
+* @copyright	2013 2022 TReCC SA
+* @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
 * Este archivo es software libre: tu puedes redistriburlo 
-* y/o modificarlo bajo los términos de la "GNU AFero General Public License version 3" 
-* publicada por la Free Software Foundation
+* y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
+* publicada por la Free Software Foundation, version 3
 * 
 * Este archivo es distribuido por si mismo y dentro de sus proyectos 
 * con el objetivo de ser útil, eficiente, predecible y transparente
@@ -28,13 +23,6 @@
 * Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
 */
 
-/**
-* genera listado html de argumentaciones
-*
-* @param int $ID id de la argumentación. null devuelve la totalidad de argumentaciónes cargadas por este usuario.
-* @param int $seleccion permite definir modos de selección, algunos modos de selección pueder ser restringidos a ciertos tpos de usuarios.
-* @return array Retorna el listado de argumentaciones, sus imágenes y sus localizaciónes
-*/
 
 
 
@@ -115,7 +103,7 @@ while($fila=pg_fetch_assoc($Consulta)){
 
 if($_POST['id_p_cot_grupos']!='n'){
 	
-	if(isset($Log['data']['grupos'][$_POST['id_p_cot_grupos']])){
+	if(!isset($Log['data']['grupos'][$_POST['id_p_cot_grupos']])){
 		
 		$Log['mg'][]='error al entender grupo designado!!!: '.$_POST['id_p_cot_grupos'];
 		
@@ -203,6 +191,7 @@ $query="
 		nom_clase='".$_POST['nom_clase']."',
 		orden='".$_POST['orden']."',
 		co_color='".$_POST['co_color']."',
+		co_color_final='".$_POST['co_color_final']."',
 		zz_preliminar='0'
 	WHERE
 		id='".$_POST['iddist']."'

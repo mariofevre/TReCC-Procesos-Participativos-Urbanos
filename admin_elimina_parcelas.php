@@ -1,18 +1,19 @@
 <?php 
 /**
- * redaccion_ed_grupo.php
- * 
- * actualiza la base de datos actualizando los datos de un grupo de distrito distrito (tipo de zona)
- * 
-*  @package    	TReCC(tm) Procesos Participativos Urbanos
+* admin_elimina_parcelas.php 
+*
+* Elimina todos los registros de parcelas de un proyecto
+* 
+* @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
 * @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
 * @author    	www.trecc.com.ar  
 * @copyright	2013 2022 TReCC SA
-* @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
+* @license    	https://www.gnu.org/licenses/agpl-3.0-standalone.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (agpl-3.0)
+* Este archivo es parte de TReCC(tm) paneldecontrol y de sus proyectos hermanos: baseobra(tm), TReCC(tm) intraTReCC  y TReCC(tm) Procesos Participativos Urbanos.
 * Este archivo es software libre: tu puedes redistriburlo 
-* y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
-* publicada por la Free Software Foundation, version 3
+* y/o modificarlo bajo los términos de la "GNU AFero General Public License version 3" 
+* publicada por la Free Software Foundation
 * 
 * Este archivo es distribuido por si mismo y dentro de sus proyectos 
 * con el objetivo de ser útil, eficiente, predecible y transparente
@@ -49,11 +50,7 @@ function terminar($Log){
 
 
 $oblig=array(
-    "cotID" => "mayor,0",
-    "idgrupo" => "mayor,0",
-    "nombre"  => "set",
-    "descripcion"  => "set",
-    "co_color"  => "set"
+    "cotID" => "mayor,0"
 );
 
 foreach($oblig as $k => $v){
@@ -67,34 +64,24 @@ foreach($oblig as $k => $v){
 }
 
 
-$Log['data']['idgrupo']=$_POST['idgrupo'];
 
+//Elimina todas las zonas (poligonos) del proyecto seleccionado
 
-if(!ctype_xdigit(substr($_POST['co_color'],1))){
-	$_POST['co_color']='#ffffff';
-}
-
-// consulta todos los distritos generados	
 $query="
-	UPDATE
-		trecc_zonificador.cot_grupos	
-	SET
-		nombre='".$_POST['nombre']."',
-		descripcion='".$_POST['descripcion']."',
-		co_color='".$_POST['co_color']."'
-	WHERE 
-		cot_grupos.zz_auto_cot_proyectos='".$_POST['cotID']."'
-	AND
-	id='".$_POST['idgrupo']."'
-";	
-
+	UPDATE 
+		trecc_zonificador.cot_parcelas
+	SET 
+		zz_borrada='1'
+	WHERE id_p_cot_proyectos='".$_POST['cotID']."'
+	
+";
 $Consulta = pg_query($ConecSIG, $query);
 if(pg_errormessage($ConecSIG)!=''){
 	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
 	$Log['tx'][]='query: '.$query;
 	$Log['res']='err';
 	terminar($Log);
-}
+}  
 
 
 $Log['res']='exito';

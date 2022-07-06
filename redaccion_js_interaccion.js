@@ -1,10 +1,33 @@
+/**
+ * redaccion_js_muestra.js
+ * 
+ * funciones interactivas para epresentar los datos de redacción de un proyecto, incluyendo índice, grupos, tipos de zona y características; en  difenretes formatos
+ * 
+*  @package    	TReCC(tm) Procesos Participativos Urbanos
+* @author     	TReCC SA
+* @author     	<mario@trecc.com.ar> <trecc@trecc.com.ar>
+* @author    	www.trecc.com.ar  
+* @copyright	2013 2022 TReCC SA
+* @license    	http://www.gnu.org/licenses/gpl.html GNU AFFERO GENERAL PUBLIC LICENSE, version 3 (GPL-3.0)
+* Este archivo es software libre: tu puedes redistriburlo 
+* y/o modificarlo bajo los términos de la "GNU AFFERO GENERAL PUBLIC LICENSE" 
+* publicada por la Free Software Foundation, version 3
+* 
+* Este archivo es distribuido por si mismo y dentro de sus proyectos 
+* con el objetivo de ser útil, eficiente, predecible y transparente
+* pero SIN NIGUNA GARANTÍA; sin siquiera la garantía implícita de
+* CAPACIDAD DE MERCANTILIZACIÓN o utilidad para un propósito particular.
+* Consulte la "GNU General Public License" para más detalles.
+* 
+* Si usted no cuenta con una copia de dicha licencia puede encontrarla aquí: <http://www.gnu.org/licenses/>.
+*/
+
+
+
+
 function cerrarForm(_idform){
-	
-	document.querySelector('#'+_idform).setAttribute('estado','inactivo');
-		
+	document.querySelector('#'+_idform).setAttribute('estado','inactivo');	
 }
-
-
 
 
 //OPCIONES EN FORMULARIO DISTRITO
@@ -163,34 +186,56 @@ function cargaOpcion(_this){
 
 
 function formularDistrito(_iddist){
-	
-		_form=document.querySelector('#formdistrito');
-		_form.setAttribute('estado','activo');
 
-		console.log(_iddist);
-		_ddat=_DataDistritos.distritos[_iddist];
+	_form=document.querySelector('#formdistrito');
+	_form.setAttribute('estado','activo');
+
+	console.log(_iddist);
+	_ddat=_DataDistritos.distritos[_iddist];
+	
+	
+	_form.querySelector('[name="iddist"]').value= _iddist;
+	_form.querySelector('[name="id_p_cot_grupos_id"]').value= _ddat.id_p_cot_grupos_id;
+	
+	_dgrupo=_DataDistritos.grupos[_ddat.id_p_cot_grupos_id];
+	if(_dgrupo==undefined){
+		_form.querySelector('[name="cot_grupos_nombre-n"]').value= '';
+		_form.querySelector('[name="cot_grupos_descripcion-n"]').value= '';
 		
+	}else{
+		_form.querySelector('[name="cot_grupos_nombre-n"]').value= _dgrupo.nombre;
+		_form.querySelector('[name="cot_grupos_descripcion-n"]').value= _dgrupo.descripcion;
 		
-		_form.querySelector('[name="iddist"]').value= _iddist;
-		_form.querySelector('[name="id_p_cot_grupos_id"]').value= _ddat.id_p_cot_grupos_id;
-		
-		_dgrupo=_DataDistritos.grupos[_ddat.id_p_cot_grupos_id];
-		if(_dgrupo==undefined){
-			_form.querySelector('[name="cot_grupos_nombre-n"]').value= '';
-			_form.querySelector('[name="cot_grupos_descripcion-n"]').value= '';
-			
-		}else{
-			_form.querySelector('[name="cot_grupos_nombre-n"]').value= _dgrupo.nombre;
-			_form.querySelector('[name="cot_grupos_descripcion-n"]').value= _dgrupo.descripcion;
-			
-		}
-		
-		_form.querySelector('[name="nom_clase"]').value= _ddat.nom_clase;
-		_form.querySelector('[name="des_clase"]').value= _ddat.des_clase;
-		_form.querySelector('[name="des_clase"]').focus();
-		_form.querySelector('[name="orden"]').value= _ddat.orden;
-		_form.querySelector('[name="co_color"]').value= _ddat.co_color;
-		
+	}
+	
+	_form.querySelector('[name="nom_clase"]').value= _ddat.nom_clase;
+	_form.querySelector('[name="des_clase"]').value= _ddat.des_clase;
+	_form.querySelector('[name="des_clase"]').focus();
+	_form.querySelector('[name="orden"]').value= _ddat.orden;
+	_form.querySelector('[name="co_color"]').value= _ddat.co_color;
+	
+	
+	_form.querySelector('[name="colorgrupo"]').value= _ddat.colorgrupo;
+
+
+	_grgb = hexToRgb(_ddat.colorgrupo);
+	_drgb = hexToRgb(_ddat.co_color);
+	_frgb={
+		'r':(Math.round((_grgb['r']+_drgb['r'])/2)),
+		'g':(Math.round((_grgb['g']+_drgb['g'])/2)),
+		'b':(Math.round((_grgb['b']+_drgb['b'])/2))		
+	};
+	
+	_mezcla=rgbToHex(_frgb['r'], _frgb['g'], _frgb['b']);	
+	
+	_form.querySelector('[name="color_mezcla"]').value=_mezcla;		
+	_form.querySelector('[name="color_final"]').value=_ddat.co_color_final;
+	if(_ddat.co_color_final!=''){
+		_form.querySelector('[name="color_final_definido"]').checked=true;
+	}else{
+		_form.querySelector('[name="color_final_definido"]').checked=false;
+	}
+	
 		//opcionarDef(_form.querySelector('#Icot_grupos_nombre-n'));
 }
 
@@ -211,6 +256,8 @@ function formularGrupo(_idg){
 }
 
 function hexToRgb(hex) {
+	
+	if(hex==null){return Array(0,0,0);}
   // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
   var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
   hex = hex.replace(shorthandRegex, function(m, r, g, b) {
@@ -561,3 +608,139 @@ function cerrarMapaGrande(){
 	_mg=_porta.querySelector('#mapagrande');
 	_mg.parentNode.removeChild(_mg);
 }
+
+
+
+// Formulario de carga de geometrias
+
+function modoCandidato(){	
+	document.querySelector('#candidatos').setAttribute('modo',document.querySelector('input[name="contenido"]:checked').value);
+}
+
+function generarCandidato(_shapef,_dat){
+	console.log(_shapef);
+	_div=document.createElement('div');
+	_div.setAttribute('class','candidato');
+	_div.setAttribute('shapefile',_shapef);
+	document.querySelector('#formshapefile #candidatos').appendChild(_div);
+	console.log(_div);
+	_h=document.createElement('h2');
+	_h.innerHTML=_shapef;
+	_div.appendChild(_h);
+	
+	_a=document.createElement('a');
+	_a.innerHTML='Borrar archivos';
+	_a.setAttribute('class','eliminar');
+	_a.setAttribute('onclick','borrarArchivos("'+_shapef+'")');
+	_div.appendChild(_a);				
+	
+	_p=document.createElement('p');
+	_p.innerHTML=_dat.estado;
+	_p.setAttribute('estado',_dat.estado);
+	_div.appendChild(_p);
+	
+	_p=document.createElement('p');
+	_p.innerHTML='registros:'+_dat.cant;
+	_p.innerHTML+='<br>tipo:'+_dat.tipo;
+	_div.appendChild(_p);
+
+	_zona=document.createElement('div');
+	_zona.setAttribute('class','modozona');
+	_div.appendChild(_zona);				
+	
+		_p=document.createElement('span');
+		_p.innerHTML='Nombre del campo que contiente el tipo de zona (codigo):';
+		_zona.appendChild(_p);				
+	
+		if(_dat.campos==undefined){return;}
+					
+		_sel=document.createElement('select');
+		_sel.setAttribute('name','campolink');
+		_zona.appendChild(_sel);
+	
+		for(_campo in _dat.campos){
+			_op=document.createElement('option');
+			_op.setAttribute('value',_campo);
+			_op.innerHTML=_campo;
+			_sel.appendChild(_op);
+			if(_campo=='tipo'){_op.checked=true;}
+		}
+
+
+	
+	_zona=document.createElement('div');
+	_zona.setAttribute('class','modoparcelas');
+	_div.appendChild(_zona);				
+	
+		_p=document.createElement('span');
+		_p.innerHTML='Campo con tipo de zona (codigo):';
+		_zona.appendChild(_p);				
+	
+		if(_dat.campos==undefined){return;}
+					
+		_sel=document.createElement('select');
+		_sel.setAttribute('name','campolink');
+		_zona.appendChild(_sel);	
+		for(_campo in _dat.campos){
+			_op=document.createElement('option');
+			_op.setAttribute('value',_campo);
+			_op.innerHTML=_campo;
+			_sel.appendChild(_op);
+			if(_campo=='tipo'){_op.checked=true;}
+		}
+		_br=document.createElement('br');
+		_zona.appendChild(_br);				
+
+		_p=document.createElement('span');
+		_p.innerHTML='Campo con nomenclatura:';
+		_zona.appendChild(_p);				
+		_sel=document.createElement('select');
+		_sel.setAttribute('name','camponomencla');
+		_zona.appendChild(_sel);
+	
+		for(_campo in _dat.campos){
+			_op=document.createElement('option');
+			_op.setAttribute('value',_campo);
+			_op.innerHTML=_campo;
+			_sel.appendChild(_op);
+			if(_campo=='tipo'){_op.checked=true;}
+		}
+		_br=document.createElement('br');
+		_zona.appendChild(_br);	
+		
+		_p=document.createElement('span');
+		_p.innerHTML='Campo con superficie construida:';
+		_zona.appendChild(_p);				
+		_sel=document.createElement('select');
+		_sel.setAttribute('name','camposuperf');
+		_zona.appendChild(_sel);
+	
+		for(_campo in _dat.campos){
+			_op=document.createElement('option');
+			_op.setAttribute('value',_campo);
+			_op.innerHTML=_campo;
+			_sel.appendChild(_op);
+			if(_campo=='tipo'){_op.checked=true;}
+		}
+		_br=document.createElement('br');
+		_zona.appendChild(_br);	
+
+
+		if(_dat.estado=='viable'){
+			_br=document.createElement('br');
+			_div.appendChild(_br);					
+			
+			_in=document.createElement('input');
+			_in.setAttribute('value','cargar');
+			_in.setAttribute('type','button');
+			_in.setAttribute('onclick','procesarShapefile("'+_shapef+'",0)');
+			_in.setAttribute('estado',_dat.estado);
+			_div.appendChild(_in);
+
+			_divb=document.createElement('div');
+			_divb.setAttribute('id','avance');
+			_div.appendChild(_divb);
+											
+		}
+}
+modoCandidato();

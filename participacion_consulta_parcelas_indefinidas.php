@@ -1,8 +1,9 @@
 <?php 
 /**
- * redaccion_ed_grupo.php
+ * participacion_consulta_parcelas_indefinidas.php
  * 
- * actualiza la base de datos actualizando los datos de un grupo de distrito distrito (tipo de zona)
+ * consulta a base de datos de parcelas sin tipo de zona asignada
+ * output: json
  * 
 *  @package    	TReCC(tm) Procesos Participativos Urbanos
 * @author     	TReCC SA
@@ -28,7 +29,6 @@
 
 ini_set('display_errors',true);
 include('./includes/header.php');
-ini_set('display_errors',true);
 
 $Log=array();
 global $Log;
@@ -49,52 +49,91 @@ function terminar($Log){
 
 
 $oblig=array(
-    "cotID" => "mayor,0",
-    "idgrupo" => "mayor,0",
-    "nombre"  => "set",
-    "descripcion"  => "set",
-    "co_color"  => "set"
+    "cotID" => "mayor,0"
 );
-
 foreach($oblig as $k => $v){
-	
 	if(!isset($_POST[$k])){
-		
 		$Log['res']='error';
-		$Log['mg'][]='Error falta varaible '.$k;
+		$Log['mg']='Error falta varaible '.$k;
 		terminar($Log);
 	}	
 }
 
-
-$Log['data']['idgrupo']=$_POST['idgrupo'];
-
-
-if(!ctype_xdigit(substr($_POST['co_color'],1))){
-	$_POST['co_color']='#ffffff';
+if(!isset($_POST['cotID'])){
+	$Log['res']='error';
+	$Log['mg']='Error falta varaible idcot';
+	terminar($Log);
 }
 
-// consulta todos los distritos generados	
-$query="
-	UPDATE
-		trecc_zonificador.cot_grupos	
-	SET
-		nombre='".$_POST['nombre']."',
-		descripcion='".$_POST['descripcion']."',
-		co_color='".$_POST['co_color']."'
-	WHERE 
-		cot_grupos.zz_auto_cot_proyectos='".$_POST['cotID']."'
-	AND
-	id='".$_POST['idgrupo']."'
-";	
+$Log['data']['nPar']=$fila['nPar'];
 
+
+
+
+
+
+$query="	
+SELECT 
+		id, id_p_distritos, nomencla
+	FROM 
+		trecc_zonificador.cot_parcelas
+	WHERE
+		id_p_distritos ='0'
+		AND
+		id_p_cot_proyectos='".$_POST['cotID']."'		
+		AND
+		zz_borrada='0'
+	
+";
+	
 $Consulta = pg_query($ConecSIG, $query);
 if(pg_errormessage($ConecSIG)!=''){
 	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
 	$Log['tx'][]='query: '.$query;
 	$Log['res']='err';
 	terminar($Log);
+}  
+while($fila =pg_fetch_assoc($Consulta)){		
+	$Log['data']['parcelasIndefinidasOrden'][]=$fila['id'];
+	$Log['data']['parcelasIndefinidas'][$fila['id']]=$fila;
+	$Log['data']['parcelasIndefinidas'][$fila['id']]['participaciones']=array();
 }
+
+
+
+$query="	
+SELECT 
+	id, titulo, desarrollo, autor, organizacion, contacto, ip, fechaunix, 
+	geom, respuesta_resultado, 
+	respuesta_observaciones, respuesta_por, id_p_cot_parcelas
+	
+	FROM 
+	trecc_zonificador.cot_participaciones
+	
+	WHERE
+	(
+	zz_copia_de_id is null
+	OR
+	respuesta_resultado is null
+	OR
+	respuesta_resultado ='pendiente'
+	)
+	AND
+	id_p_cot_parcelas is not null
+";
+	
+$Consulta = pg_query($ConecSIG, $query);
+if(pg_errormessage($ConecSIG)!=''){
+	$Log['tx'][]='error: '.pg_errormessage($ConecSIG);
+	$Log['tx'][]='query: '.$query;
+	$Log['res']='err';
+	terminar($Log);
+}  
+while($fila =pg_fetch_assoc($Consulta)){		
+	if(!isset($Log['data']['parcelasIndefinidas'][$fila['id_p_cot_parcelas']])){continue;}
+	$Log['data']['parcelasIndefinidas'][$fila['id_p_cot_parcelas']]['participaciones'][$fila['id']]=$fila;
+}
+
 
 
 $Log['res']='exito';
